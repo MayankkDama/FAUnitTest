@@ -25,6 +25,7 @@ dependencyResolutionManagement {
         }
         maven {
             url = uri(repoDir)
+
         }
         maven {
             setUrl("https://jitpack.io")
