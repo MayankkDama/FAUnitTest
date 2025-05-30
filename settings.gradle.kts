@@ -28,10 +28,6 @@ dependencyResolutionManagement {
         }
         maven {
             setUrl("https://jitpack.io")
-            credentials {
-                username = "x-access-token"
-                password = System.getenv("JITPACK_GITHUB_TOKEN")
-            }
         }
     }
 }
