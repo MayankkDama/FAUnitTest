@@ -26,6 +26,9 @@ jobs:
       - name: Configure Gradle for JitPack with authentication
         run: |
           echo "JITPACK_GITHUB_TOKEN=${{ secrets.JITPACK_GITHUB_TOKEN }}" >> $GITHUB_ENV
+          
+      - name: Echo JitPack token presence
+        run: echo "Token is set? ${{ secrets.JITPACK_GITHUB_TOKEN != '' }}"
 
       - name: Generate required files
         run: |
