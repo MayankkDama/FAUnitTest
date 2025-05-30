@@ -41,5 +41,5 @@ jobs:
           echo "${{ secrets.GRADLE_RELEASE_PROPERTIES_BASE64 }}" | base64 --decode > .signing/release.properties
 
       - name: Build Signed APK
-        run: ./gradlew assembleRelease -PrepoDir=$repoDir
+        run: ./gradlew assembleRelease
 
