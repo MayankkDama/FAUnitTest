@@ -34,9 +34,6 @@ jobs:
         working-directory: ./marketkit
         run: ./gradlew publishToMavenLocal
 
-      - name: Configure Gradle properties for local MarketKit repo
-        run: echo "repoDir=${{ github.workspace }}/marketkit/build/repos/maven" >> $GITHUB_ENV
-
       - name: Generate required signing files
         run: |
           mkdir -p .signing
@@ -45,3 +42,4 @@ jobs:
 
       - name: Build Signed APK
         run: ./gradlew assembleRelease -PrepoDir=$repoDir
+
