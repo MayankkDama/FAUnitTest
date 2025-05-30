@@ -16,8 +16,6 @@ jobs:
     steps:
       - name: Checkout the code
         uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.ref }}
 
       - name: Set up JDK
         uses: actions/setup-java@v4
@@ -28,10 +26,6 @@ jobs:
       - name: Configure Gradle for JitPack with authentication
         run: |
           echo "JITPACK_GITHUB_TOKEN=${{ secrets.JITPACK_GITHUB_TOKEN }}" >> $GITHUB_ENV
-
-      - name: Patch repositories for private JitPack access
-        run: |
-          echo 'allprojects { repositories { maven { url "https://jitpack.io"; credentials { username = "x-access-token"; password = System.getenv("JITPACK_GITHUB_TOKEN") } } } }' >> build.gradle
 
       - name: Generate required files
         run: |
