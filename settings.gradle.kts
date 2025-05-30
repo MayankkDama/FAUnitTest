@@ -11,6 +11,9 @@ pluginManagement {
         gradlePluginPortal()
     }
 }
+
+val repoDir = providers.gradleProperty("repoDir").orNull ?: "${rootDir}/marketkit/build/repos/maven"
+
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
@@ -19,6 +22,9 @@ dependencyResolutionManagement {
         mavenCentral()
         maven {
             setUrl("https://github.com/Gainsight/px-android/raw/main/")
+        }
+        maven {
+            url = uri(repoDir)
         }
         maven {
             setUrl("https://jitpack.io")

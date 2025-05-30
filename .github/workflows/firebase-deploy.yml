@@ -14,8 +14,15 @@ jobs:
         java-version: [17]
 
     steps:
-      - name: Checkout the code
+      - name: Checkout main app code
         uses: actions/checkout@v4
+
+      - name: Checkout MarketKit repo
+        uses: actions/checkout@v4
+        with:
+          repository: ever-ag/marketkit-android
+          token: ${{ secrets.JITPACK_GITHUB_TOKEN }}
+          path: marketkit
 
       - name: Set up JDK
         uses: actions/setup-java@v4
@@ -23,18 +30,18 @@ jobs:
           distribution: temurin
           java-version: ${{ matrix.java-version }}
 
-      - name: Configure Gradle for JitPack with authentication
-        run: |
-          echo "JITPACK_GITHUB_TOKEN=${{ secrets.JITPACK_GITHUB_TOKEN }}" >> $GITHUB_ENV
-          
-      - name: Echo JitPack token presence
-        run: echo "Token is set? ${{ secrets.JITPACK_GITHUB_TOKEN != '' }}"
+      - name: Build and publish MarketKit locally
+        working-directory: ./marketkit
+        run: ./gradlew publishToMavenLocal
 
-      - name: Generate required files
+      - name: Configure Gradle properties for local MarketKit repo
+        run: echo "repoDir=${{ github.workspace }}/marketkit/build/repos/maven" >> $GITHUB_ENV
+
+      - name: Generate required signing files
         run: |
           mkdir -p .signing
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > .signing/fa_release_keystore.jks
           echo "${{ secrets.GRADLE_RELEASE_PROPERTIES_BASE64 }}" | base64 --decode > .signing/release.properties
 
       - name: Build Signed APK
-        run: ./gradlew assembleRelease
+        run: ./gradlew assembleRelease -PrepoDir=$repoDir
