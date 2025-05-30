@@ -1,0 +1,26 @@
+### Description
+
+Please include a summary of the changes.
+
+### How this has been tested?
+
+Indicate what you've checked to make sure your changes are working as expected.
+
+### Screenshot
+
+Please Add Screenshots If there are any UI changes.
+
+| Screenshot 1 | Screenshot 2 |
+|--------------|--------------|
+| Image 1 URL  | Image 2 URL  |
+
+### Please make sure these boxes are checked before submitting your pull request
+
+- [ ] I have performed a self-review of my own code.
+
+- [ ] I have kept my pull request small so it can be easily reviewed.
+
+- [ ] I have commented my code, particularly in hard-to-understand areas.
+
+- [ ] My changes generate no new warnings (Android/Kotlin lint warnings, console error/warning logs,
+  etc)

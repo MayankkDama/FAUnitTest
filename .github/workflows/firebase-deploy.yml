@@ -1,0 +1,43 @@
+name: Firebase Deploy
+
+on:
+  pull_request:
+    types:
+      - closed
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        java-version: [17]
+
+    steps:
+      - name: Checkout the code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ matrix.java-version }}
+
+      - name: Configure Gradle for JitPack with authentication
+        run: |
+          echo "JITPACK_GITHUB_TOKEN=${{ secrets.JITPACK_GITHUB_TOKEN }}" >> $GITHUB_ENV
+
+      - name: Patch repositories for private JitPack access
+        run: |
+          echo 'allprojects { repositories { maven { url "https://jitpack.io"; credentials { username = "x-access-token"; password = System.getenv("JITPACK_GITHUB_TOKEN") } } } }' >> build.gradle
+
+      - name: Generate required files
+        run: |
+          mkdir -p .signing
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > .signing/fa_release_keystore.jks
+          echo "${{ secrets.GRADLE_RELEASE_PROPERTIES_BASE64 }}" | base64 --decode > .signing/release.properties
+
+      - name: Build Signed APK
+        run: ./gradlew assembleRelease
