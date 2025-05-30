@@ -12,7 +12,6 @@ pluginManagement {
     }
 }
 
-
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
@@ -22,7 +21,6 @@ dependencyResolutionManagement {
         maven {
             setUrl("https://github.com/Gainsight/px-android/raw/main/")
         }
-
         maven {
             setUrl("https://jitpack.io")
         }
