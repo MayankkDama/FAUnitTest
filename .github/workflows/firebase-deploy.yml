@@ -2,8 +2,8 @@ name: Firebase Deploy
 
 on:
   pull_request:
-    types:
-      - closed
+    branches:
+      - master
 
 jobs:
   build:
