@@ -15,14 +15,25 @@ pluginManagement {
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
-        mavenLocal()
         google()
         mavenCentral()
         maven {
             setUrl("https://github.com/Gainsight/px-android/raw/main/")
         }
-        maven {
+       /* maven {
             setUrl("https://jitpack.io")
+        }*/
+        maven {
+            name = "GitHubPackages"
+            url = uri("https://maven.pkg.github.com/ever-ag/marketkit-android")
+            credentials {
+                username = System.getenv("GPR_USER")
+                password = System.getenv("GPR_KEY")
+            }
+            /*credentials {
+                username = "MayankkDama" // GitHub username
+                password = "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" // GitHub PAT
+            }*/
         }
     }
 }
@@ -49,4 +60,4 @@ include(":dashboard:ui")
 include(":dashboard:data")
 include(":dashboard:domain")
 
-// include(":MarketKit-Android")
+include(":marketkit-android")

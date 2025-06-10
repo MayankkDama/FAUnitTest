@@ -67,7 +67,7 @@ androidx-lifecycle-runtime-compose = { group = "androidx.lifecycle", name = "lif
 androidx-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
 androidx-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 androidx-material3 = { group = "androidx.compose.material3", name = "material3" }
-marketkit = { module = "com.everag.marketkit:marketkit", version.ref = "marketkit" }
+marketkit = { module = "com.everag:marketkit", version.ref = "marketkit" }
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 androidx-compose-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended" }
 androidx-compose-material = { group = "androidx.compose.material", name = "material",version.ref = "material-pull-to-refresh" }

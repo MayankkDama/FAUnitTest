@@ -52,5 +52,6 @@ dependencies {
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
     implementation(libs.marketkit)
+//    implementation("com.github.MayankkDama:demolib:1.0.1")
 
 }
