@@ -13,6 +13,10 @@ jobs:
       matrix:
         java-version: [17]
 
+    env:
+      GPR_USER: ${{ secrets.GPR_USER }}
+      GPR_KEY: ${{ secrets.GPR_KEY }}
+
     steps:
       - name: Checkout main app code
         uses: actions/checkout@v4
