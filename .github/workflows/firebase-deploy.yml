@@ -1,12 +1,13 @@
-name: Firebase Deploy
+name: Build and Deploy
 
 on:
-  push:
-    branches:
-      - master
+  pull_request:
+    types:
+      - closed
 
 jobs:
   build:
+    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
 
     strategy:
@@ -17,47 +18,28 @@ jobs:
       GPR_USER: ${{ secrets.GPR_USER }}
       GPR_KEY: ${{ secrets.GPR_KEY }}
 
+    outputs:
+      version_tag: ${{ steps.version.outputs.version_tag }}
+      is_release: ${{ steps.version.outputs.is_release }}
+
     steps:
-      - name: Checkout main app code
+      - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Fetch all history and tags
+          fetch-depth: 0
 
-      - name: Check for tags on current commit
-        id: check_tags
+      - name: Get version tag
+        id: version
         run: |
-          echo "Current commit: ${{ github.sha }}"
-          echo "Current ref: ${{ github.ref }}"
+          VERSION_TAG=$(git tag --points-at HEAD | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+' | head -n 1)
           
-          # Get all tags pointing to current commit
-          TAGS=$(git tag --points-at HEAD)
-          echo "Tags on current commit:"
-          echo "$TAGS"
-          
-          # Check for firebase-deploy tags (supports patterns like firebase-deploy, firebase-deploy-v1, firebase-deploy-*)
-          if echo "$TAGS" | grep -q "firebase-deploy"; then
-            echo "has_firebase_tag=true" >> $GITHUB_OUTPUT
-            FIREBASE_TAG=$(echo "$TAGS" | grep "firebase-deploy" | head -n 1)
-            echo "✅ Firebase deploy tag found: $FIREBASE_TAG"
-            echo "firebase_tag_name=$FIREBASE_TAG" >> $GITHUB_OUTPUT
+          if [ -n "$VERSION_TAG" ]; then
+            echo "version_tag=$VERSION_TAG" >> $GITHUB_OUTPUT
+            echo "is_release=true" >> $GITHUB_OUTPUT
           else
-            echo "has_firebase_tag=false" >> $GITHUB_OUTPUT
-            echo "❌ No firebase-deploy tag found"
+            echo "version_tag=dev-build" >> $GITHUB_OUTPUT
+            echo "is_release=false" >> $GITHUB_OUTPUT
           fi
-          
-          # Check for production-deploy tags (supports patterns like production-deploy, production-deploy-v1, production-deploy-*)
-          if echo "$TAGS" | grep -q "production-deploy"; then
-            echo "has_production_tag=true" >> $GITHUB_OUTPUT
-            PRODUCTION_TAG=$(echo "$TAGS" | grep "production-deploy" | head -n 1)
-            echo "✅ Production deploy tag found: $PRODUCTION_TAG"
-            echo "production_tag_name=$PRODUCTION_TAG" >> $GITHUB_OUTPUT
-          else
-            echo "has_production_tag=false" >> $GITHUB_OUTPUT
-            echo "❌ No production-deploy tag found"
-          fi
-          
-          # Store all tags for reference
-          echo "all_tags=$TAGS" >> $GITHUB_OUTPUT
 
       - name: Set up JDK
         uses: actions/setup-java@v4
@@ -65,45 +47,103 @@ jobs:
           distribution: temurin
           java-version: ${{ matrix.java-version }}
 
-      - name: Generate required signing files
+      - name: Generate signing files
         run: |
           mkdir -p .signing
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > .signing/fa_release_keystore.jks
           echo "${{ secrets.GRADLE_RELEASE_PROPERTIES_BASE64 }}" | base64 --decode > .signing/release.properties
 
-      - name: Build Signed APK
-        env:
-          GPR_USER: ${{ secrets.GPR_USER }}
-          GPR_KEY: ${{ secrets.GPR_KEY }}
+      - name: Build APK
         run: ./gradlew assembleRelease
 
-      - name: Dummy Firebase Deploy Task
-        if: steps.check_tags.outputs.has_firebase_tag == 'true'
+      - name: Rename APK
         run: |
-          echo "🚀 Firebase Deploy Git Tag Detected: ${{ steps.check_tags.outputs.firebase_tag_name }}"
-          echo "This is where Firebase deployment would happen..."
-          echo "APK Path: ./app/build/outputs/apk/release/app-release.apk"
-          echo "Commit: ${{ github.sha }}"
-          echo "Branch: ${{ github.ref_name }}"
-          echo "Tag: ${{ steps.check_tags.outputs.firebase_tag_name }}"
-          echo "All tags: ${{ steps.check_tags.outputs.all_tags }}"
-          # In real scenario, this would be:
-          # firebase appdistribution:distribute ./app/build/outputs/apk/release/app-release.apk ...
+          cp ./app/build/outputs/apk/release/app-release.apk \
+             ./app/build/outputs/apk/release/app-${{ steps.version.outputs.version_tag }}.apk
 
-      - name: Dummy Production Deploy Task
-        if: steps.check_tags.outputs.has_production_tag == 'true'
-        run: |
-          echo "🎯 Production Deploy Git Tag Detected: ${{ steps.check_tags.outputs.production_tag_name }}"
-          echo "This is where production deployment would happen..."
-          echo "Simulating upload to Play Store..."
-          echo "Tag: ${{ steps.check_tags.outputs.production_tag_name }}"
-          sleep 2
-          echo "✅ Production deployment completed!"
-
-      - name: Upload APK as Artifact
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: app-release-apk
-          path: ./app/build/outputs/apk/release/app-release.apk
+          name: app-${{ steps.version.outputs.version_tag }}
+          path: ./app/build/outputs/apk/release/app-${{ steps.version.outputs.version_tag }}.apk
           retention-days: 30
 
+  deploy-firebase:
+    needs: build
+    if: |
+      needs.build.outputs.is_release == 'true' &&
+      contains(github.event.pull_request.labels.*.name, 'deploy:firebase')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download APK
+        uses: actions/download-artifact@v4
+        with:
+          name: app-${{ needs.build.outputs.version_tag }}
+
+      - name: Deploy to Firebase (Dummy)
+        run: |
+          echo "🚀 [DUMMY] Deploying to Firebase App Distribution..."
+          echo "APK: ./app-${{ needs.build.outputs.version_tag }}.apk"
+          echo "Version: ${{ needs.build.outputs.version_tag }}"
+          echo "✅ [DUMMY] Firebase deployment completed successfully!"
+          
+          # Uncomment below when ready for actual deployment:
+          # npm install -g firebase-tools
+          # firebase appdistribution:distribute ./app-${{ needs.build.outputs.version_tag }}.apk \
+          #   --app ${{ secrets.APP_ID }} \
+          #   --release-notes "Release ${{ needs.build.outputs.version_tag }}" \
+          #   --testers-file ./config/firebase/app_distribution_testers.txt \
+          #   --token ${{ secrets.FIREBASE_APP_DISTRIBUTION_TOKEN }}
+
+      - name: Comment on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '🚀 **[TEST]** Version **${{ needs.build.outputs.version_tag }}** - Firebase deployment step executed successfully!'
+            })
+
+  deploy-playstore:
+    needs: build
+    if: |
+      needs.build.outputs.is_release == 'true' &&
+      contains(github.event.pull_request.labels.*.name, 'deploy:playstore')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download APK
+        uses: actions/download-artifact@v4
+        with:
+          name: app-${{ needs.build.outputs.version_tag }}
+
+      - name: Deploy to Play Store (Dummy)
+        run: |
+          echo "🎯 [DUMMY] Deploying to Google Play Store..."
+          echo "APK: ./app-${{ needs.build.outputs.version_tag }}.apk"
+          echo "Version: ${{ needs.build.outputs.version_tag }}"
+          sleep 2
+          echo "✅ [DUMMY] Play Store deployment completed successfully!"
+          
+          # Uncomment below when ready for actual deployment:
+          # Add your Play Store deployment commands here (e.g., fastlane, play publisher API)
+
+      - name: Comment on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '🎯 **[TEST]** Version **${{ needs.build.outputs.version_tag }}** - Play Store deployment step executed successfully!'
+            })
