@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - master
+    tags:
+      - '*'
 
 jobs:
   build:
@@ -20,6 +22,39 @@ jobs:
     steps:
       - name: Checkout main app code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history and tags
+
+      - name: Check for tags on current commit
+        id: check_tags
+        run: |
+          echo "Current commit: ${{ github.sha }}"
+          echo "Current ref: ${{ github.ref }}"
+          
+          # Get all tags pointing to current commit
+          TAGS=$(git tag --points-at HEAD)
+          echo "Tags on current commit:"
+          echo "$TAGS"
+          
+          # Check for specific tags
+          if echo "$TAGS" | grep -q "firebase-deploy"; then
+            echo "has_firebase_tag=true" >> $GITHUB_OUTPUT
+            echo "✅ firebase-deploy tag found!"
+          else
+            echo "has_firebase_tag=false" >> $GITHUB_OUTPUT
+            echo "❌ firebase-deploy tag not found"
+          fi
+          
+          if echo "$TAGS" | grep -q "production-deploy"; then
+            echo "has_production_tag=true" >> $GITHUB_OUTPUT
+            echo "✅ production-deploy tag found!"
+          else
+            echo "has_production_tag=false" >> $GITHUB_OUTPUT
+            echo "❌ production-deploy tag not found"
+          fi
+          
+          # Store all tags for reference
+          echo "all_tags=$TAGS" >> $GITHUB_OUTPUT
 
       - name: Set up JDK
         uses: actions/setup-java@v4
@@ -34,5 +69,46 @@ jobs:
           echo "${{ secrets.GRADLE_RELEASE_PROPERTIES_BASE64 }}" | base64 --decode > .signing/release.properties
 
       - name: Build Signed APK
+        env:
+          GPR_USER: ${{ secrets.GPR_USER }}
+          GPR_KEY: ${{ secrets.GPR_KEY }}
         run: ./gradlew assembleRelease
+
+      - name: Check APK was built successfully
+        run: |
+          if [ -f ./app/build/outputs/apk/release/app-release.apk ]; then
+            echo "✅ APK built successfully!"
+            ls -lh ./app/build/outputs/apk/release/app-release.apk
+          else
+            echo "❌ APK build failed!"
+            exit 1
+          fi
+
+      - name: Dummy Firebase Deploy Task
+        if: steps.check_tags.outputs.has_firebase_tag == 'true'
+        run: |
+          echo "🚀 firebase-deploy Git Tag Detected!"
+          echo "This is where Firebase deployment would happen..."
+          echo "APK Path: ./app/build/outputs/apk/release/app-release.apk"
+          echo "Commit: ${{ github.sha }}"
+          echo "Branch: ${{ github.ref_name }}"
+          echo "All tags: ${{ steps.check_tags.outputs.all_tags }}"
+          # In real scenario, this would be:
+          # firebase appdistribution:distribute ./app/build/outputs/apk/release/app-release.apk ...
+
+      - name: Dummy Production Deploy Task
+        if: steps.check_tags.outputs.has_production_tag == 'true'
+        run: |
+          echo "🎯 production-deploy Git Tag Detected!"
+          echo "This is where production deployment would happen..."
+          echo "Simulating upload to Play Store..."
+          sleep 2
+          echo "✅ Production deployment completed!"
+
+      - name: Upload APK as Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-apk
+          path: ./app/build/outputs/apk/release/app-release.apk
+          retention-days: 30
 

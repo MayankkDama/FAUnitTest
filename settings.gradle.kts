@@ -27,13 +27,9 @@ dependencyResolutionManagement {
             name = "GitHubPackages"
             url = uri("https://maven.pkg.github.com/ever-ag/marketkit-android")
             credentials {
-                username = System.getenv("GPR_USER")
-                password = System.getenv("GPR_KEY")
-            }
-            /*credentials {
                 username = "MayankkDama" // GitHub username
                 password = "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" // GitHub PAT
-            }*/
+            }
         }
     }
 }
