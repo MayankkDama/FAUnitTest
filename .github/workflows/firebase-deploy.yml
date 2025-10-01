@@ -36,21 +36,26 @@ jobs:
           echo "Tags on current commit:"
           echo "$TAGS"
           
-          # Check for specific tags
+          # Check for firebase-deploy tags (supports patterns like firebase-deploy, firebase-deploy-v1, firebase-deploy-*)
           if echo "$TAGS" | grep -q "firebase-deploy"; then
             echo "has_firebase_tag=true" >> $GITHUB_OUTPUT
-            echo "✅ firebase-deploy tag found!"
+            FIREBASE_TAG=$(echo "$TAGS" | grep "firebase-deploy" | head -n 1)
+            echo "✅ Firebase deploy tag found: $FIREBASE_TAG"
+            echo "firebase_tag_name=$FIREBASE_TAG" >> $GITHUB_OUTPUT
           else
             echo "has_firebase_tag=false" >> $GITHUB_OUTPUT
-            echo "❌ firebase-deploy tag not found"
+            echo "❌ No firebase-deploy tag found"
           fi
           
+          # Check for production-deploy tags (supports patterns like production-deploy, production-deploy-v1, production-deploy-*)
           if echo "$TAGS" | grep -q "production-deploy"; then
             echo "has_production_tag=true" >> $GITHUB_OUTPUT
-            echo "✅ production-deploy tag found!"
+            PRODUCTION_TAG=$(echo "$TAGS" | grep "production-deploy" | head -n 1)
+            echo "✅ Production deploy tag found: $PRODUCTION_TAG"
+            echo "production_tag_name=$PRODUCTION_TAG" >> $GITHUB_OUTPUT
           else
             echo "has_production_tag=false" >> $GITHUB_OUTPUT
-            echo "❌ production-deploy tag not found"
+            echo "❌ No production-deploy tag found"
           fi
           
           # Store all tags for reference
@@ -77,11 +82,12 @@ jobs:
       - name: Dummy Firebase Deploy Task
         if: steps.check_tags.outputs.has_firebase_tag == 'true'
         run: |
-          echo "🚀 firebase-deploy Git Tag Detected!"
+          echo "🚀 Firebase Deploy Git Tag Detected: ${{ steps.check_tags.outputs.firebase_tag_name }}"
           echo "This is where Firebase deployment would happen..."
           echo "APK Path: ./app/build/outputs/apk/release/app-release.apk"
           echo "Commit: ${{ github.sha }}"
           echo "Branch: ${{ github.ref_name }}"
+          echo "Tag: ${{ steps.check_tags.outputs.firebase_tag_name }}"
           echo "All tags: ${{ steps.check_tags.outputs.all_tags }}"
           # In real scenario, this would be:
           # firebase appdistribution:distribute ./app/build/outputs/apk/release/app-release.apk ...
@@ -89,9 +95,10 @@ jobs:
       - name: Dummy Production Deploy Task
         if: steps.check_tags.outputs.has_production_tag == 'true'
         run: |
-          echo "🎯 production-deploy Git Tag Detected!"
+          echo "🎯 Production Deploy Git Tag Detected: ${{ steps.check_tags.outputs.production_tag_name }}"
           echo "This is where production deployment would happen..."
           echo "Simulating upload to Play Store..."
+          echo "Tag: ${{ steps.check_tags.outputs.production_tag_name }}"
           sleep 2
           echo "✅ Production deployment completed!"
 
