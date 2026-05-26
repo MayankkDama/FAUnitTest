@@ -6,10 +6,6 @@ on:
       - '**'
   workflow_dispatch:
 
-concurrency:
-  group: firebase-test-lab-${{ github.ref }}
-  cancel-in-progress: true
-
 env:
   GRADLE_OPTS: "-Xmx2g -XX:MaxMetaspaceSize=256m -Dorg.gradle.daemon=false -Dfile.encoding=UTF-8"
 
@@ -17,18 +13,6 @@ jobs:
   instrumented-tests:
     runs-on: ubuntu-latest
     timeout-minutes: 60
-    env:
-      APP_APK_PATH: app/build/outputs/apk/debug/app-debug.apk
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - module_name: dashboard-ui
-            gradle_module: ":dashboard:ui"
-            apk_path: dashboard/ui/build/outputs/apk/androidTest/debug/ui-debug-androidTest.apk
-          - module_name: common-ui
-            gradle_module: ":common:ui"
-            apk_path: common/ui/build/outputs/apk/androidTest/debug/ui-debug-androidTest.apk
 
     steps:
       - name: Checkout the code
@@ -41,10 +25,7 @@ jobs:
           java-version: 17
           cache: gradle
 
-      - name: Generate required files
-        run: |
-          mkdir -p .signing
-          echo "${{ secrets.GRADLE_RELEASE_PROPERTIES_BASE64 }}" | base64 --decode > .signing/release.properties
+      # Add whatever secret/setup steps THAT project needs (gradle props, keystore, etc.)
 
       - name: Set up Google Cloud
         uses: google-github-actions/auth@v2
@@ -54,13 +35,14 @@ jobs:
       - name: Install gcloud CLI
         uses: google-github-actions/setup-gcloud@v2
 
-      - name: Build app and androidTest APKs
-        run: ./gradlew :app:assembleDebug ${{ matrix.gradle_module }}:assembleDebugAndroidTest --stacktrace --max-workers=1
+      - name: Build APKs
+        run: ./gradlew :app:assembleDebug :app:assembleDebugAndroidTest --stacktrace --max-workers=1
 
       - name: Run tests on Firebase Test Lab
         run: |
-          APP_APK="${{ env.APP_APK_PATH }}"
-          TEST_APK="${{ matrix.apk_path }}"
+          APP_APK="app/build/outputs/apk/debug/app-debug.apk"
+          TEST_APK="app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk"
+
           if [ ! -f "$APP_APK" ]; then
             echo "App APK not found at: $APP_APK"
             exit 1
@@ -73,11 +55,8 @@ jobs:
           echo "Listing virtual devices:"
           gcloud firebase test android models list --filter="virtual"
 
-          echo "Running ${{ matrix.module_name }} instrumented tests on Firebase Test Lab..."
           gcloud firebase test android run \
             --type instrumentation \
             --app "$APP_APK" \
             --test "$TEST_APK" \
             --device model=MediumPhone.arm,version=34,locale=en,orientation=portrait
-
-          echo "View results in Firebase Console → Test Lab (or in the gcloud output link above)."
